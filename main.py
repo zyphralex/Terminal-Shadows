@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+import sys
+import platform
+
+system = platform.system()
+
+if system in ("Windows", "Darwin"):
+    print("❌ Эта игра доступна только для пользователей Linux-дистрибутивов.")
+    print(f"Обнаружена ОС: {system}")
+    sys.exit(1)
+
 import os
 import sys
 import time
