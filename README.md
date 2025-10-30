@@ -2,7 +2,7 @@
 
 ![Terminal Shadows](https://img.shields.io/badge/Version-2.0-blue)
 ![Python](https://img.shields.io/badge/Python-3.8+-green)
-![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey)
+![Platform](https://img.shields.io/badge/Platform-Linux-lightgrey)
 
 **Эпическая текстовая RPG в мире киберпанка 2049 года**
 
