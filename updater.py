@@ -22,7 +22,6 @@ class SimpleUpdater:
         return "3.0"
     
     def check_git_installed(self):
-        """Проверяет установлен ли git"""
         try:
             subprocess.run(["git", "--version"], check=True, capture_output=True)
             return True
@@ -30,7 +29,6 @@ class SimpleUpdater:
             return False
     
     def create_backup(self):
-        """Создает резервную копию сохранений"""
         print("💾 Создание резервной копии...")
         
         if not os.path.exists(self.backup_dir):
@@ -62,7 +60,6 @@ class SimpleUpdater:
             return None
     
     def clone_repo(self):
-        """Клонирует репозиторий во временную папку"""
         print("📥 Клонирование репозитория...")
         
         try:
@@ -86,7 +83,6 @@ class SimpleUpdater:
             return False
     
     def get_remote_version(self):
-        """Получает версию из удаленного репозитория"""
         try:
             version_path = os.path.join(self.temp_dir, "version.txt")
             if os.path.exists(version_path):
@@ -97,7 +93,6 @@ class SimpleUpdater:
             return "unknown"
     
     def update_files(self):
-        """Обновляет файлы игры"""
         print("🔄 Обновление файлов...")
         
         try:
@@ -132,7 +127,6 @@ class SimpleUpdater:
             return False
     
     def update_dependencies(self):
-        """Обновляет зависимости Python"""
         print("📦 Обновление зависимостей...")
         
         requirements_file = os.path.join(self.game_dir, "requirements.txt")
@@ -149,7 +143,6 @@ class SimpleUpdater:
             print("⚠️  Файл requirements.txt не найден")
     
     def cleanup(self):
-        """Очищает временные файлы"""
         if os.path.exists(self.temp_dir):
             try:
                 shutil.rmtree(self.temp_dir)
@@ -157,7 +150,6 @@ class SimpleUpdater:
                 pass
     
     def run(self):
-        """Основной метод апдейтера"""
         print("🔄 ПРОСТОЙ АПДЕЙТЕР TERMINAL SHADOWS")
         print("=" * 50)
         print(f"📋 Текущая версия: {self.current_version}")

@@ -68,7 +68,6 @@ class GameData:
             try:
                 with open(self.config_file, 'r') as f:
                     self.config = json.load(f)
-                # Обновляем конфиг если добавились новые поля
                 for key, value in default_config.items():
                     if key not in self.config:
                         self.config[key] = value
@@ -82,8 +81,7 @@ class GameData:
         with open(self.config_file, 'w') as f:
             json.dump(self.config, f, indent=2)
         
-    def save_game(self, player_data, slot=0, game_mode="story"):
-        """Сохраняет игру с указанием режима"""
+    def save_game(self, filename=None, slot=0, game_mode="story"):
         if slot == 0:
             save_file = os.path.join(self.save_dir, f"autosave_{game_mode}.dat")
         else:
@@ -104,7 +102,6 @@ class GameData:
             return False
             
     def load_game(self, slot=0, game_mode="story"):
-        """Загружает игру с указанием режима"""
         if slot == 0:
             save_file = os.path.join(self.save_dir, f"autosave_{game_mode}.dat")
         else:
@@ -120,14 +117,9 @@ class GameData:
         return None
         
     def get_saves(self, game_mode="story"):
-        """Возвращает список доступных сохранений для указанного режима"""
         saves = []
-        
-        # Проверяем автосохранение
         if os.path.exists(os.path.join(self.save_dir, f"autosave_{game_mode}.dat")):
             saves.append(0)
-            
-        # Проверяем ручные сохранения
         for i in range(1, 4):
             if os.path.exists(os.path.join(self.save_dir, f"save{i}_{game_mode}.dat")):
                 saves.append(i)
@@ -152,8 +144,6 @@ class Player:
         self.completed_missions = []
         self.reputation = 0
         self.achievements = []
-        
-        # ПЕРСОНАЛЬНАЯ статистика игрока
         self.personal_stats = {
             "play_time": 0,
             "chapters_completed": 0,
@@ -176,7 +166,6 @@ class Player:
     def level_up(self):
         self.level += 1
         self.exp = 0
-        # При повышении уровня увеличиваем все навыки
         for skill in self.skills:
             self.skills[skill] += 1
         return f"🎉 Уровень повышен! Теперь уровень {self.level}. Все навыки +1!"
@@ -293,7 +282,6 @@ class GameEngine:
                 input("Нажмите Enter...")
     
     def story_mode_menu(self):
-        """Меню сюжетного режима"""
         while True:
             self.clear_screen()
             print("📖 СЮЖЕТНЫЙ РЕЖИМ")
@@ -316,7 +304,6 @@ class GameEngine:
                 input("Нажмите Enter...")
     
     def sandbox_mode_menu(self):
-        """Меню свободного режима"""
         while True:
             self.clear_screen()
             print("🎯 СВОБОДНЫЙ РЕЖИМ")
@@ -362,8 +349,6 @@ class GameEngine:
             self.start_sandbox_mode()
     
     def start_story_mode(self):
-        """Запуск сюжетного режима"""
-        # Вступительная кат-сцена
         self.clear_screen()
         self.type_text("\nГод 2049. Цифровой мир стал новой реальностью...")
         time.sleep(1)
@@ -379,14 +364,11 @@ class GameEngine:
         self.play_story_mode()
     
     def start_sandbox_mode(self):
-        """Запуск свободного режима"""
         self.clear_screen()
         self.type_text("\n🎯 СВОБОДНЫЙ РЕЖИМ АКТИВИРОВАН")
         self.type_text("Здесь нет сюжета - только ты и бесконечные возможности цифрового мира.")
         self.type_text("Создавай свою историю, взламывай цели, развивай навыки!")
         time.sleep(2)
-        
-        # Даем бонусы для песочницы
         self.player.bitcoins = 5000
         self.player.level = 5
         for skill in self.player.skills:
@@ -395,12 +377,10 @@ class GameEngine:
         print(f"\n💰 Стартовый бонус: 5000 BTC")
         print(f"🎯 Уровень повышен до 5")
         print(f"⚡ Все навыки установлены на 3")
-        
         input("\n🎮 Нажмите Enter чтобы начать...")
         self.sandbox_loop()
         
     def play_story_mode(self):
-        """Основной цикл сюжетного режима"""
         if not chapters:
             print("❌ Нет доступных глав для сюжетного режима! Проверьте папку `story/`.")
             input("Нажмите Enter чтобы вернуться в меню...")
@@ -411,8 +391,6 @@ class GameEngine:
                 self.play_chapter(chapter, i)
                 self.player.story_progress += 1
                 self.player.personal_stats["chapters_completed"] += 1
-                
-                # АВТОСОХРАНЕНИЕ после каждой главы
                 if self.data.config.get("autosave", True):
                     if self.data.save_game(self.player.__dict__, 0, "story"):
                         print("💾 Сюжет автоматически сохранен!")
@@ -427,7 +405,6 @@ class GameEngine:
         self.sandbox_loop()
         
     def sandbox_loop(self):
-        """Основной цикл свободного режима"""
         self.game_mode = "sandbox"
         
         while True:
@@ -458,7 +435,6 @@ class GameEngine:
             elif choice == "5":
                 self.save_specific_game("sandbox")
             elif choice == "6":
-                # Автосохранение при выходе
                 if self.data.config.get("autosave", True):
                     self.data.save_game(self.player.__dict__, 0, "sandbox")
                 return
@@ -480,8 +456,6 @@ class GameEngine:
             self.clear_screen()
             print(f"📖 {chapter['title']}")
             print("="*50)
-            
-            # Показываем гида в определенных сценах
             if chapter.get("guide_appearance", False) and self.current_scene == "start":
                 self.show_guide()
                 self.type_text("\nАнонимный Гид: 'Эта миссия изменит все. Будь осторожен.'\n")
@@ -591,10 +565,8 @@ class GameEngine:
                     self.hacking_animation(target["name"])
                     
                     success_chance = min(0.95, (self.player.skills["hacking"] * 0.25) / target["difficulty"])
-                    
                     if random.random() < success_chance:
                         reward = target["reward"]
-                        # Бонус за навыки
                         if self.player.skills["hacking"] > target["difficulty"]:
                             bonus = reward // 2
                             reward += bonus
@@ -611,16 +583,12 @@ class GameEngine:
                         
                         if old_level:
                             print(self.player.level_up())
-                        
-                        # Шанс найти предмет
                         if random.random() < 0.4:
                             items = ["🔑 Ключ шифрования", "💾 Эксплойт", "🛡️ Файрвол", "📡 Сниффер", "⚡ Ускоритель"]
                             item = random.choice(items)
                             self.player.inventory.append(item)
                             self.player.add_item()
                             print(f"🎒 Найден: {item}")
-                            
-                        # Проверка достижений
                         if reward >= 50000:
                             print(self.player.add_achievement("💎 Мастер взлома"))
                             
@@ -714,7 +682,6 @@ class GameEngine:
         for skill, level in self.player.skills.items():
             print(f"  {skill}: {'⭐' * level} (уровень {level})")
         print()
-        
         print("🎒 ИНВЕНТАРЬ:")
         if self.player.inventory:
             for i, item in enumerate(self.player.inventory, 1):
@@ -722,9 +689,6 @@ class GameEngine:
         else:
             print("  Пусто")
         print()
-        
-        # ПЕРСОНАЛЬНАЯ статистика игрока
-        print("📈 ВАША СТАТИСТИКА:")
         stats = self.player.personal_stats
         print(f"  🕐 Время игры: {int(stats['play_time'] // 60)} минут")
         print(f"  🎯 Глав завершено: {stats['chapters_completed']}")
@@ -760,13 +724,10 @@ class GameEngine:
         input("Нажмите Enter для возврата...")
     
     def save_specific_game(self, mode):
-        """Сохраняет игру в указанном режиме"""
         self.clear_screen()
         print(f"💾 СОХРАНЕНИЕ {'СЮЖЕТА' if mode == 'story' else 'СВОБОДНОГО РЕЖИМА'}")
         print("="*30)
         print()
-        
-        # Показываем автосохранение
         autosave_file = os.path.join(self.data.save_dir, f"autosave_{mode}.dat")
         if os.path.exists(autosave_file):
             with open(autosave_file, 'rb') as f:
@@ -774,8 +735,6 @@ class GameEngine:
             print("0. [АВТОСОХРАНЕНИЕ] - последняя сессия")
         else:
             print("0. [АВТОСОХРАНЕНИЕ] - нет данных")
-            
-        # Показываем ручные сохранения
         for i in range(1, 4):
             save_file = os.path.join(self.data.save_dir, f"save{i}_{mode}.dat")
             if os.path.exists(save_file):
@@ -807,7 +766,6 @@ class GameEngine:
         input("\nНажмите Enter...")
         
     def load_specific_game(self, mode):
-        """Загружает игру из указанного режима"""
         saves = self.data.get_saves(mode)
         if not saves:
             print(f"❌ Нет сохранений для {'сюжетного режима' if mode == 'story' else 'свободного режима'}!")
@@ -818,8 +776,6 @@ class GameEngine:
         print(f"💾 ЗАГРУЗКА {'СЮЖЕТА' if mode == 'story' else 'СВОБОДНОГО РЕЖИМА'}")
         print("="*30)
         print()
-        
-        # Показываем автосохранение
         autosave_file = os.path.join(self.data.save_dir, f"autosave_{mode}.dat")
         if os.path.exists(autosave_file):
             with open(autosave_file, 'rb') as f:
@@ -828,8 +784,6 @@ class GameEngine:
             print(f"   Имя: {save_data['player']['name']} | Ур. {save_data['player']['level']}")
             print(f"   Прогресс: Глава {save_data['player']['story_progress']} | {save_data['timestamp'][:10]}")
             print()
-            
-        # Показываем ручные сохранения
         for i in range(1, 4):
             save_file = os.path.join(self.data.save_dir, f"save{i}_{mode}.dat")
             if os.path.exists(save_file):
@@ -871,13 +825,10 @@ class GameEngine:
             input("Нажмите Enter...")
     
     def load_game_menu(self):
-        """Общее меню загрузки с выбором режима"""
         self.clear_screen()
         print("💾 ЗАГРУЗКА ИГРЫ")
         print("="*30)
         print()
-        
-        # Проверяем сохранения для каждого режима
         story_saves = self.data.get_saves("story")
         sandbox_saves = self.data.get_saves("sandbox")
         
@@ -911,20 +862,15 @@ class GameEngine:
             print("❌ Неверный выбор!")
             input("Нажмите Enter...")
             
-    def check_updates(self):
-        """Проверка обновлений через апдейтер"""
+    def check_for_updates(self):
         self.clear_screen()
         print("🔄 ПРОВЕРКА ОБНОВЛЕНИЙ")
         print("="*30)
         print()
-        
-        # Проверяем наличие апдейтера
         if os.path.exists("updater.py"):
             print("✅ Апдейтер найден")
             print("🚀 Запуск проверки обновлений...")
             time.sleep(2)
-            
-            # Запускаем апдейтер
             os.system("python3 updater.py")
         else:
             print("❌ Апдейтер не найден")
@@ -978,13 +924,10 @@ class GameEngine:
                 input()
             elif choice == "5":
                 if input("❌ Удалить ВСЕ сохранения? (y/N): ").lower() == 'y':
-                    # Удаляем все сохранения
                     for mode in ["story", "sandbox"]:
-                        # Удаляем автосохранение
                         autosave_file = os.path.join(self.data.save_dir, f"autosave_{mode}.dat")
                         if os.path.exists(autosave_file):
                             os.remove(autosave_file)
-                        # Удаляем ручные сохранения
                         for i in range(1, 4):
                             save_file = os.path.join(self.data.save_dir, f"save{i}_{mode}.dat")
                             if os.path.exists(save_file):
@@ -1033,7 +976,6 @@ class GameEngine:
         print(f"  📖 Пройдено глав: 30/30")
         print()
         
-        # Финальная статистика
         stats = self.player.personal_stats
         print("📈 ВАША ФИНАЛЬНАЯ СТАТИСТИКА:")
         print(f"  🕐 Всего времени в игре: {int(stats['play_time'] // 60)} минут")
@@ -1049,11 +991,9 @@ class GameEngine:
         self.sandbox_loop()
             
     def exit_game(self):
-        # Обновляем время игры перед выходом
         play_time = time.time() - self.start_time
         if self.player:
             self.player.update_play_time(play_time)
-            # Сохраняем игру при выходе
             if self.data.config.get("autosave", True) and self.game_mode:
                 self.data.save_game(self.player.__dict__, 0, self.game_mode)
         

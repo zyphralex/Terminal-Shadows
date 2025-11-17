@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""
-Validate story chapter files for syntax and basic integrity.
-- Ensures each chapter file compiles
-- Ensures `CHAPTER_N` exists
-- Ensures scenes referenced in `next` exist or are allowed keywords
-- Reports missing fields and suspicious empty achievements
-"""
 import ast
 import os
 import re
@@ -18,18 +11,15 @@ errors = []
 def load_chapter(path):
     with open(path, 'r', encoding='utf-8') as f:
         src = f.read()
-    # Syntax check
     try:
         ast.parse(src)
     except SyntaxError as e:
         return None, f"SyntaxError: {e}"
-    # Exec in isolated namespace
     ns = {}
     try:
         exec(compile(src, path, 'exec'), ns)
     except Exception as e:
         return None, f"Runtime error when importing: {e}"
-    # Find CHAPTER_* variable
     ch = None
     for k, v in ns.items():
         if k.startswith('CHAPTER_'):
@@ -46,14 +36,12 @@ def validate_chapter_file(path):
     if err:
         errors.append((name, err))
         return
-    # Basic structure
     title = ch.get('title')
     scenes = ch.get('scenes')
     if not title or not isinstance(scenes, dict):
         errors.append((name, 'Missing title or scenes dict'))
         return
     scene_names = set(scenes.keys())
-    # Validate scenes
     for sname, scene in scenes.items():
         if 'text' not in scene:
             errors.append((name, f"Scene '{sname}' missing text"))
