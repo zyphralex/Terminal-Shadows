@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "🐧 Установка TERMINAL SHADOWS ULTIMATE v2.0..."
+echo "🐧 Установка TERMINAL SHADOWS ULTIMATE v3.0..."
 echo "=============================================="
 
 if ! command -v python3 &> /dev/null; then
@@ -31,7 +31,7 @@ echo ""
 echo "💾 Данные игры: ~/.terminal_shadows_ultimate/"
 echo "📁 Сохранения: ~/.terminal_shadows_ultimate/saves/"
 echo ""
-echo "✨ ОСОБЕННОСТИ v2.0:"
+echo "✨ ОСОБЕННОСТИ v3.0:"
 echo "   • 📖 СЮЖЕТНЫЙ РЕЖИМ (30 глав)"
 echo "   • 🎯 СВОБОДНЫЙ РЕЖИМ (бесконечная игра)"
 echo "   • 💾 Раздельные сохранения для каждого режима"

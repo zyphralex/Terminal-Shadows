@@ -107,9 +107,7 @@ CHAPTER_27 = {
                 {
                     "text": "➡️ ПЕРЕЙТИ К ГЛАВЕ 28", 
                     "next": "next_chapter", 
-                    "effect": {
-                        "achievement": ""
-                    }
+                    "effect": {}
                 }
             ]
         }

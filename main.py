@@ -18,13 +18,31 @@ import json
 from datetime import datetime
 
 sys.path.append('story')
+import re
+
 chapters = []
-for i in range(1, 31):
-    try:
-        module = __import__(f'chapter{i}')
-        chapters.append(getattr(module, f'CHAPTER_{i}'))
-    except Exception as e:
-        print(f"Error loading chapter {i}: {e}")
+try:
+    files = [f for f in os.listdir('story') if re.match(r'chapter\d+\.py$', f)]
+    nums = []
+    for f in files:
+        m = re.match(r'chapter(\d+)\.py$', f)
+        if m:
+            nums.append(int(m.group(1)))
+    nums.sort()
+
+    for i in nums:
+        mod = f'chapter{i}'
+        try:
+            module = __import__(mod)
+            chap = getattr(module, f'CHAPTER_{i}', None)
+            if chap:
+                chapters.append(chap)
+            else:
+                print(f"Warning: {mod} содержит нет CHAPTER_{i}")
+        except Exception as e:
+            print(f"Error loading {mod}: {e}")
+except Exception as e:
+    print(f"Error scanning story directory: {e}")
 
 class GameData:
     def __init__(self):
@@ -74,7 +92,7 @@ class GameData:
         save_data = {
             'player': player_data,
             'timestamp': datetime.now().isoformat(),
-            'version': '2.0',
+            'version': '3.0',
             'game_mode': game_mode  # Добавляем информацию о режиме
         }
         try:
@@ -383,6 +401,11 @@ class GameEngine:
         
     def play_story_mode(self):
         """Основной цикл сюжетного режима"""
+        if not chapters:
+            print("❌ Нет доступных глав для сюжетного режима! Проверьте папку `story/`.")
+            input("Нажмите Enter чтобы вернуться в меню...")
+            return
+
         for i, chapter in enumerate(chapters, 1):
             if i == self.player.story_progress:
                 self.play_chapter(chapter, i)
@@ -979,7 +1002,7 @@ class GameEngine:
         print("📊 ГЛОБАЛЬНАЯ СТАТИСТИКА")
         print("="*30)
         print()
-        print("🎮 Всего глав: 30")
+        print(f"🎮 Всего глав: {len(chapters)}")
         print("🎯 Целей для взлома: 8")
         print("🛒 Товаров в магазине: 8")
         print("⚡ Навыков для прокачки: 5")
@@ -1036,7 +1059,7 @@ class GameEngine:
         
         self.clear_screen()
         print("👋 До новых встреч в цифровом подполье!")
-        print("TERMINAL SHADOWS: DIGITAL GHOST v2.0")
+        print("TERMINAL SHADOWS: DIGITAL GHOST v3.0")
         if self.player:
             print(f"🕐 Всего сыграно: {int(self.player.personal_stats['play_time'] // 60)} минут")
         time.sleep(2)
