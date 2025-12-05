@@ -4,8 +4,8 @@ import platform
 
 system = platform.system()
 
-if system in ("Windows", "Darwin"):
-    print("❌ Эта игра доступна только для пользователей Linux-дистрибутивов.")
+if system in ("Darwin"):
+    print("❌ Эта игра доступна только для пользователей Linux-дистрибутивов и Windows.")
     print(f"Обнаружена ОС: {system}")
     sys.exit(1)
 
