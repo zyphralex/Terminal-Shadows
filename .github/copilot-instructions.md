@@ -1,14 +1,18 @@
 # Terminal Shadows - Copilot Instructions
 
 ## Project Overview
-**Terminal Shadows** is a cyberpunk text-based RPG game written in Python with 30 chapters of story content and a free-play sandbox mode. The architecture is modular—each chapter is an independent Python module. The game supports separate save slots for story mode and sandbox mode, with autosave functionality.
+**Terminal Shadows** is a cyberpunk text-based RPG game written in Python with **40 chapters of story content** and a feature-rich sandbox mode. The architecture is modular—each chapter is an independent Python module. 
+
+**Version**: 4.0 ULTIMATE EDITION
+
+**New in v4.0**: Random events, boss battles, crafting system, factions, daily missions, colored UI
 
 **Key Tech**: Python 3.8+, colorama, requests, pickle (serialization), JSON (config)
 
 ## Architecture & Core Patterns
 
 ### 1. Modular Chapter System
-- **Location**: `story/chapter1.py` through `story/chapter30.py`
+- **Location**: `story/chapter1.py` through `story/chapter40.py`
 - **Pattern**: Each chapter is a dict named `CHAPTER_N` with this structure:
   ```python
   CHAPTER_X = {
@@ -28,7 +32,7 @@
       }
   }
   ```
-- **Loading**: `main.py` lines 22-27 dynamically imports all 30 chapters via `__import__()` and stores in `chapters[]`
+- **Loading**: `main.py` dynamically imports all 40 chapters via `__import__()` and stores in `chapters[]`
 - **When Adding**: Create new chapters following the exact structure; the engine will auto-load them if numbered correctly
 
 ### 2. Save System (Dual-Mode)
@@ -55,8 +59,8 @@
   - `Player` - state container
   - `GameEngine` - presentation logic, scene navigation, animations
 - **Game Modes**:
-  - `story` mode: Linear progression through chapters 1-30
-  - `sandbox` mode: Unlocked after story completion; separate save state
+  - `story` mode: Linear progression through chapters 1-40
+  - `sandbox` mode: Unlocked after story completion; separate save state with random events, boss battles, crafting, factions
 - **Key Methods** (`GameEngine`):
   - `show_main_menu()` - menu system with choices 1-5+
   - `play_chapter(chapter_num)` - processes chapter dict, handles scene navigation
@@ -180,7 +184,51 @@ print('Player data:', loaded['player'].name if loaded else 'Failed')
 |------|---------|
 | `main.py` | Game engine, player state, save/load logic |
 | `updater.py` | Git-based version update system |
-| `story/chapter*.py` | 30 chapter (or more) narrative dicts |
+| `story/chapter*.py` | 40 chapter narrative dicts |
 | `data/ascii_arts/*.txt` | Visual assets |
 | `requirements.txt` | pip dependencies |
-| `version.txt` | Current game version |
+| `version.txt` | Current game version (4.0) |
+
+## New in Version 4.0 - ULTIMATE EDITION
+
+### 🎲 Random Events System
+- **8+ dynamic events** that trigger randomly (15% chance per action)
+- Events have multiple choices with skill checks
+- Affect faction reputation, bitcoins, items
+- Located in: `random_event()` method in `GameEngine`
+
+### 👹 Boss Battles
+- **8 bosses** from level 5 to 100
+- Turn-based combat system with HP, damage, actions
+- Rewards: up to 5M BTC + skill boosts
+- Located in: `boss_battles()` and `fight_boss()` methods
+
+### 🔨 Crafting System
+- **7 recipes** from basic to legendary
+- Requires materials from inventory
+- "Crown of Master" item: +10 to ALL skills
+- Located in: `crafting_menu()` method
+
+### 🎭 Faction System
+- **5 factions**: Hackers, Corporations, Anarchists, Government, Underground
+- **8 reputation ranks** from "Enemy" to "Legendary"
+- Reputation affects events and gameplay
+- Located in: Player class `factions{}` dict + `factions_menu()`
+
+### 📋 Daily Missions
+- 5 types of daily tasks
+- Auto-tracking progress
+- Regular rewards
+- Located in: `daily_missions()` method
+
+### 🎨 Colored Interface
+- Colorama integration for vibrant UI
+- Color-coded menus and text
+- Progress bars for skills
+- Optional (fallback if colorama not installed)
+
+### 📊 Enhanced Statistics
+- New metrics: bosses_defeated, events_completed, items_crafted
+- Rank system based on total power
+- Faction reputation display
+- Visual skill bars

@@ -2,8 +2,8 @@
 chcp 65001 > nul
 cls
 
-echo 🐧 Установка TERMINAL SHADOWS ULTIMATE v3.0...
-echo ==============================================
+echo 🔥 Установка TERMINAL SHADOWS v4.0 ULTIMATE EDITION 🔥
+echo ========================================================
 
 :: Проверка наличия Python
 python --version > nul 2>&1
@@ -36,11 +36,14 @@ echo.
 echo 💾 Данные игры: %USERPROFILE%\.terminal_shadows_ultimate\
 echo 📁 Сохранения: %USERPROFILE%\.terminal_shadows_ultimate\saves\
 echo.
-echo ✨ ОСОБЕННОСТИ v3.0:
-echo    • 📖 СЮЖЕТНЫЙ РЕЖИМ (35 глав)
-echo    • 🎯 СВОБОДНЫЙ РЕЖИМ (бесконечная игра)
-echo    • 💾 Раздельные сохранения для каждого режима
-echo    • 🤖 Анонимный гид
-echo    • 🔄 Встроенный апдейтер
+echo ✨ НОВОЕ В v4.0 ULTIMATE EDITION:
+echo    • 📖 40 ГЛАВ СЮЖЕТА (новые 36-40!)
+echo    • 🎲 СЛУЧАЙНЫЕ СОБЫТИЯ (8+ сценариев)
+echo    • 👹 БИТВЫ С БОССАМИ (8 боссов)
+echo    • 🔨 СИСТЕМА КРАФТА (7 рецептов)
+echo    • 🎭 ФРАКЦИИ (5 группировок)
+echo    • 📋 ЕЖЕДНЕВНЫЕ ЗАДАНИЯ
+echo    • 🎨 ЦВЕТНОЙ ИНТЕРФЕЙС
+echo    • 🏆 20 ДОСТИЖЕНИЙ
 echo.
 pause
