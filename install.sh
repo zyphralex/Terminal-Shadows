@@ -1,27 +1,53 @@
 #!/bin/bash
+set -e  # Exit on error
+
 echo "🔥 Установка TERMINAL SHADOWS v4.0 ULTIMATE EDITION 🔥"
 echo "========================================================"
+echo ""
 
+# Проверка Python3
 if ! command -v python3 &> /dev/null; then
-    echo "❌ Установите Python3: sudo apt install python3 python3-venv"
+    echo "❌ Python3 не найден!"
+    echo "📥 Установите: sudo apt install python3 python3-venv python3-pip"
     exit 1
 fi
 
+echo "✅ Python3 найден: $(python3 --version)"
+echo ""
+
 # Создание виртуального окружения
-python3 -m venv venv
+echo "📦 Создание виртуального окружения..."
+if python3 -m venv venv; then
+    echo "✅ Виртуальное окружение создано"
+else
+    echo "❌ Ошибка создания окружения"
+    exit 1
+fi
+
+echo "🔌 Активация окружения..."
 source venv/bin/activate
 
 # Установка зависимостей
-pip install --upgrade pip
-pip install -r requirements.txt
+echo "📥 Обновление pip..."
+pip install --upgrade pip --quiet
+
+echo "📥 Установка зависимостей..."
+if pip install -r requirements.txt; then
+    echo "✅ Зависимости установлены"
+else
+    echo "❌ Ошибка установки зависимостей"
+    exit 1
+fi
 
 # Создание директорий для данных
+echo "📁 Создание директорий для данных..."
 mkdir -p ~/.terminal_shadows_ultimate/saves
 mkdir -p ~/.terminal_shadows_ultimate/backups
 
 # Делаем скрипты исполняемыми
-chmod +x run_game.sh
-chmod +x update_game.sh
+echo "🔧 Настройка прав доступа..."
+chmod +x run_game.sh 2>/dev/null || true
+chmod +x update_game.sh 2>/dev/null || true
 
 echo ""
 echo "✅ УСТАНОВКА ЗАВЕРШЕНА!"

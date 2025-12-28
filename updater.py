@@ -19,7 +19,7 @@ class SimpleUpdater:
         if os.path.exists(version_file):
             with open(version_file, 'r') as f:
                 return f.read().strip()
-        return "3.0"
+        return "4.0"
     
     def check_git_installed(self):
         try:
