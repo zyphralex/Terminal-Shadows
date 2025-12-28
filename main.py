@@ -20,6 +20,17 @@ from datetime import datetime
 sys.path.append('story')
 import re
 
+try:
+    from colorama import init, Fore, Back, Style
+    init(autoreset=True)
+    COLORS_ENABLED = True
+except ImportError:
+    COLORS_ENABLED = False
+    class Fore:
+        RED = GREEN = YELLOW = BLUE = MAGENTA = CYAN = WHITE = RESET = ""
+    class Style:
+        BRIGHT = DIM = RESET_ALL = ""
+
 chapters = []
 try:
     files = [f for f in os.listdir('story') if re.match(r'chapter\d+\.py$', f)]
@@ -90,8 +101,8 @@ class GameData:
         save_data = {
             'player': player_data,
             'timestamp': datetime.now().isoformat(),
-            'version': '3.0',
-            'game_mode': game_mode  # Добавляем информацию о режиме
+            'version': '4.0',
+            'game_mode': game_mode
         }
         try:
             with open(save_file, 'wb') as f:
@@ -144,6 +155,16 @@ class Player:
         self.completed_missions = []
         self.reputation = 0
         self.achievements = []
+        self.factions = {
+            "hackers": 0,
+            "corporations": 0,
+            "anarchists": 0,
+            "government": 0,
+            "underground": 0
+        }
+        self.daily_missions_completed = 0
+        self.boss_defeats = 0
+        self.crafted_items = []
         self.personal_stats = {
             "play_time": 0,
             "chapters_completed": 0,
@@ -151,6 +172,10 @@ class Player:
             "hacks_completed": 0,
             "items_collected": 0,
             "achievements_unlocked": 0,
+            "bosses_defeated": 0,
+            "events_completed": 0,
+            "items_crafted": 0,
+            "daily_missions": 0,
             "start_date": datetime.now().isoformat(),
             "last_play_date": datetime.now().isoformat()
         }
@@ -197,6 +222,23 @@ class Player:
     def update_play_time(self, play_time):
         self.personal_stats["play_time"] += play_time
         self.personal_stats["last_play_date"] = datetime.now().isoformat()
+        
+    def change_faction_rep(self, faction, amount):
+        if faction in self.factions:
+            self.factions[faction] += amount
+            return f"🎯 {faction.upper()}: {self.factions[faction]:+d}"
+        return ""
+        
+    def get_faction_rank(self, faction):
+        rep = self.factions.get(faction, 0)
+        if rep < -500: return "😈 Враг народа"
+        elif rep < -200: return "💀 Ненавистный"
+        elif rep < -50: return "👎 Недружелюбный"
+        elif rep < 50: return "😐 Нейтральный"
+        elif rep < 200: return "👍 Дружелюбный"
+        elif rep < 500: return "⭐ Уважаемый"
+        elif rep < 1000: return "💎 Почитаемый"
+        else: return "👑 Легендарный"
 
 class GameEngine:
     def __init__(self):
@@ -251,15 +293,15 @@ class GameEngine:
         while True:
             self.clear_screen()
             self.print_ascii("main_menu")
-            print("\n" + "="*60)
-            print("1. 📖 СЮЖЕТНЫЙ РЕЖИМ")
-            print("2. 🎯 СВОБОДНЫЙ РЕЖИМ")
-            print("3. 💾 ЗАГРУЗИТЬ ИГРУ") 
-            print("4. ⚙️  НАСТРОЙКИ")
-            print("5. 📊 СТАТИСТИКА")
-            print("6. 🔄 ПРОВЕРИТЬ ОБНОВЛЕНИЯ")
-            print("7. 🚪 ВЫХОД")
-            print("="*60)
+            print("\n" + Fore.CYAN + "="*60)
+            print(Fore.GREEN + Style.BRIGHT + "1. 📖 СЮЖЕТНЫЙ РЕЖИМ")
+            print(Fore.YELLOW + Style.BRIGHT + "2. 🎯 СВОБОДНЫЙ РЕЖИМ")
+            print(Fore.BLUE + "3. 💾 ЗАГРУЗИТЬ ИГРУ") 
+            print(Fore.MAGENTA + "4. ⚙️  НАСТРОЙКИ")
+            print(Fore.CYAN + "5. 📊 СТАТИСТИКА")
+            print(Fore.WHITE + "6. 🔄 ПРОВЕРИТЬ ОБНОВЛЕНИЯ")
+            print(Fore.RED + "7. 🚪 ВЫХОД")
+            print(Fore.CYAN + "="*60 + Style.RESET_ALL)
             
             choice = input("\nВыберите опцию [1-7]: ").strip()
             
@@ -408,6 +450,9 @@ class GameEngine:
         self.game_mode = "sandbox"
         
         while True:
+            if random.random() < 0.15:
+                self.random_event()
+                
             self.clear_screen()
             print("🎯 СВОБОДНЫЙ РЕЖИМ")
             print("="*50)
@@ -419,10 +464,15 @@ class GameEngine:
             print("3. 📊 ПРОФИЛЬ")
             print("4. 🏆 ДОСТИЖЕНИЯ")
             print("5. 💾 СОХРАНИТЬ СВОБОДНЫЙ РЕЖИМ")
-            print("6. 🏠 ГЛАВНОЕ МЕНЮ")
+            print("6. 🎲 СЛУЧАЙНОЕ СОБЫТИЕ")
+            print("7. 👹 БИТВЫ С БОССАМИ")
+            print("8. 🔨 КРАФТ ПРЕДМЕТОВ")
+            print("9. 📋 ЕЖЕДНЕВНЫЕ ЗАДАНИЯ")
+            print("10. 🎭 ФРАКЦИИ")
+            print("11. 🏠 ГЛАВНОЕ МЕНЮ")
             print()
             
-            choice = input("Выберите действие [1-6]: ").strip()
+            choice = input("Выберите действие [1-11]: ").strip()
             
             if choice == "1":
                 self.hacking_menu()
@@ -435,6 +485,16 @@ class GameEngine:
             elif choice == "5":
                 self.save_specific_game("sandbox")
             elif choice == "6":
+                self.random_event()
+            elif choice == "7":
+                self.boss_battles()
+            elif choice == "8":
+                self.crafting_menu()
+            elif choice == "9":
+                self.daily_missions()
+            elif choice == "10":
+                self.factions_menu()
+            elif choice == "11":
                 if self.data.config.get("autosave", True):
                     self.data.save_game(self.player.__dict__, 0, "sandbox")
                 return
@@ -532,7 +592,11 @@ class GameEngine:
             {"name": "🌍 Global Bank", "reward": 10000, "difficulty": 8, "req_level": 8},
             {"name": "🐉 КиберДракон", "reward": 20000, "difficulty": 10, "req_level": 10},
             {"name": "🤖 ИИ Авалон", "reward": 50000, "difficulty": 15, "req_level": 15},
-            {"name": "⚛️  Квантовая Сеть", "reward": 100000, "difficulty": 20, "req_level": 20}
+            {"name": "⚛️  Квантовая Сеть", "reward": 100000, "difficulty": 20, "req_level": 20},
+            {"name": "🌀 Портал Мультиверса", "reward": 150000, "difficulty": 25, "req_level": 25},
+            {"name": "👁️ Око Провидения", "reward": 200000, "difficulty": 30, "req_level": 30},
+            {"name": "🔮 Кристалл Судьбы", "reward": 300000, "difficulty": 35, "req_level": 35},
+            {"name": "⚡ Сердце Реальности", "reward": 500000, "difficulty": 40, "req_level": 40}
         ]
         
         while True:
@@ -616,7 +680,11 @@ class GameEngine:
             {"name": "🔓 Набор социальной инженерии", "price": 1800, "skill": "social", "bonus": 2, "description": "Помогает получать информацию от людей"},
             {"name": "🕵️  Трекер", "price": 2200, "skill": "investigation", "bonus": 2, "description": "Отслеживание цифровых следов"},
             {"name": "⚡ Квантовый дешифратор", "price": 5000, "skill": "hacking", "bonus": 5, "description": "Передовая технология взлома"},
-            {"name": "🧠 Нейроинтерфейс", "price": 8000, "skill": "programming", "bonus": 4, "description": "Прямое подключение к нейросетям"}
+            {"name": "🧠 Нейроинтерфейс", "price": 8000, "skill": "programming", "bonus": 4, "description": "Прямое подключение к нейросетям"},
+            {"name": "🌀 Разломник реальности", "price": 15000, "skill": "hacking", "bonus": 8, "description": "Взлом параллельных миров"},
+            {"name": "👁️ Божественный инсайт", "price": 20000, "skill": "investigation", "bonus": 10, "description": "Видеть сквозь любую защиту"},
+            {"name": "🔮 Предсказатель событий", "price": 25000, "skill": "social", "bonus": 12, "description": "Предвидеть действия противника"},
+            {"name": "⚛️  Генератор вселенных", "price": 50000, "skill": "programming", "bonus": 15, "description": "Создавать собственные реальности"}
         ]
         
         while True:
@@ -668,39 +736,251 @@ class GameEngine:
     def profile_menu(self):
         self.clear_screen()
         print("📊 ПРОФИЛЬ ХАКЕРА")
-        print("="*40)
+        print("="*60)
         print(f"👤 Имя: {self.player.name}")
         print(f"🎯 Уровень: {self.player.level}")
-        print(f"💰 BTC: {self.player.bitcoins}")
+        print(f"💰 BTC: {self.player.bitcoins:,}")
         print(f"⭐ Опыт: {self.player.exp}/{(self.player.level + 1) * 1000}")
-        print(f"📖 Прогресс: Глава {self.player.story_progress}/30")
-        print(f"📊 Репутация: {self.player.reputation}")
+        print(f"📖 Прогресс: Глава {self.player.story_progress}/40")
+        print(f"📊 Репутация: {self.player.reputation:+,}")
         print(f"🎮 Режим: {'📖 СЮЖЕТНЫЙ' if self.game_mode == 'story' else '🎯 СВОБОДНЫЙ'}")
         print()
         
         print("🛠️  НАВЫКИ:")
         for skill, level in self.player.skills.items():
-            print(f"  {skill}: {'⭐' * level} (уровень {level})")
+            bar = "█" * min(20, level)
+            print(f"  {skill}: {bar} ({level})")
         print()
+        
+        print("🎭 ФРАКЦИИ:")
+        for faction, rep in self.player.factions.items():
+            rank = self.player.get_faction_rank(faction)
+            print(f"  {faction}: {rep:+d} - {rank}")
+        print()
+        
         print("🎒 ИНВЕНТАРЬ:")
         if self.player.inventory:
-            for i, item in enumerate(self.player.inventory, 1):
-                print(f"  {i}. {item}")
+            unique_items = {}
+            for item in self.player.inventory:
+                unique_items[item] = unique_items.get(item, 0) + 1
+            for item, count in list(unique_items.items())[:10]:
+                print(f"  • {item} x{count}")
+            if len(unique_items) > 10:
+                print(f"  ... и еще {len(unique_items)-10} предметов")
         else:
             print("  Пусто")
         print()
+        
         stats = self.player.personal_stats
+        print("📈 СТАТИСТИКА:")
         print(f"  🕐 Время игры: {int(stats['play_time'] // 60)} минут")
-        print(f"  🎯 Глав завершено: {stats['chapters_completed']}")
-        print(f"  💰 Всего заработано: {stats['total_bitcoins_earned']} BTC")
+        print(f"  🎯 Глав завершено: {stats['chapters_completed']}/40")
+        print(f"  💰 Всего заработано: {stats['total_bitcoins_earned']:,} BTC")
         print(f"  🌐 Взломов выполнено: {stats['hacks_completed']}")
         print(f"  🎒 Предметов собрано: {stats['items_collected']}")
-        print(f"  🏆 Достижений: {stats['achievements_unlocked']}")
+        print(f"  🏆 Достижений: {stats['achievements_unlocked']}/20")
+        print(f"  👹 Боссов побеждено: {stats.get('bosses_defeated', 0)}")
+        print(f"  🎲 События завершены: {stats.get('events_completed', 0)}")
+        print(f"  🔨 Предметов создано: {stats.get('items_crafted', 0)}")
+        print(f"  📋 Ежедневных заданий: {stats.get('daily_missions', 0)}")
         print(f"  📅 Дата начала: {stats['start_date'][:10]}")
+        print()
+        
+        total_power = sum(self.player.skills.values()) + self.player.level + (self.player.bitcoins // 10000)
+        print(f"⚡ ОБЩАЯ МОЩЬ: {total_power:,}")
+        
+        if total_power > 1000:
+            rank = "👑 ЛЕГЕНДА"
+        elif total_power > 500:
+            rank = "💎 МАСТЕР"
+        elif total_power > 250:
+            rank = "⭐ ЭКСПЕРТ"
+        elif total_power > 100:
+            rank = "🎯 ПРОФИ"
+        else:
+            rank = "🌱 НОВИЧОК"
+        
+        print(f"🏅 РАНГ: {rank}")
         print()
         
         input("Нажмите Enter для возврата...")
         
+    def random_event(self):
+        events = [
+            {
+                "title": "🚨 ПОЛИЦЕЙСКИЙ РЕЙД",
+                "text": "ФБР вышло на твой след! Они окружают твое убежище.",
+                "choices": [
+                    {"text": "💨 Быстро сбежать", "skill": "stealth", "success_reward": {"bitcoins": 5000, "faction": ("government", -50)}, "fail_penalty": {"bitcoins": -10000}},
+                    {"text": "🔥 Уничтожить улики", "skill": "hacking", "success_reward": {"bitcoins": 3000, "exp": 2000}, "fail_penalty": {"bitcoins": -5000}},
+                    {"text": "💰 Дать взятку", "cost": 15000, "reward": {"faction": ("government", 30), "exp": 1000}}
+                ]
+            },
+            {
+                "title": "💼 ПРЕДЛОЖЕНИЕ ОТ КОРПОРАЦИИ",
+                "text": "MegaCorp предлагает тебе контракт на 50,000 BTC. Но это означает работу на систему.",
+                "choices": [
+                    {"text": "✅ Принять контракт", "reward": {"bitcoins": 50000, "faction": ("corporations", 100), "faction2": ("hackers", -80)}},
+                    {"text": "❌ Отказаться", "reward": {"faction": ("hackers", 50), "reputation": 100}},
+                    {"text": "🎭 Принять и саботировать", "skill": "stealth", "success_reward": {"bitcoins": 70000, "faction": ("hackers", 100)}, "fail_penalty": {"faction": ("corporations", -200)}}
+                ]
+            },
+            {
+                "title": "👥 ХАКЕРСКАЯ ВСТРЕЧА",
+                "text": "Тебя приглашают на секретную встречу легендарных хакеров в даркнете.",
+                "choices": [
+                    {"text": "🤝 Пойти и обменяться знаниями", "reward": {"skill": "hacking", "value": 2, "faction": ("hackers", 80)}},
+                    {"text": "🎯 Попытаться взломать их", "skill": "hacking", "success_reward": {"bitcoins": 30000, "item": "🔑 Ключи к даркнету"}, "fail_penalty": {"faction": ("hackers", -150)}},
+                    {"text": "🚫 Проигнорировать", "reward": {}}
+                ]
+            },
+            {
+                "title": "💥 КИБЕРАТАКА НА ГОРОД",
+                "text": "Неизвестная группа запустила вирус, парализовавший весь город. Хаос!",
+                "choices": [
+                    {"text": "🦸 Остановить атаку", "skill": "programming", "success_reward": {"bitcoins": 40000, "faction": ("government", 150), "reputation": 500}, "fail_penalty": {"reputation": -200}},
+                    {"text": "😈 Присоединиться к атаке", "reward": {"bitcoins": 60000, "faction": ("anarchists", 200), "faction2": ("government", -300)}},
+                    {"text": "🤷 Использовать хаос для кражи", "skill": "stealth", "success_reward": {"bitcoins": 80000}, "fail_penalty": {"bitcoins": -20000}}
+                ]
+            },
+            {
+                "title": "🎰 ЧЕРНЫЙ РЫНОК",
+                "text": "Ты находишь вход на секретный черный рынок с редкими товарами.",
+                "choices": [
+                    {"text": "🛒 Купить редкий предмет", "cost": 25000, "reward": {"item": "⚡ Квантовый процессор", "skill": "hacking", "value": 5}},
+                    {"text": "🎲 Сыграть в азартную игру", "cost": 10000, "random": True},
+                    {"text": "🚪 Уйти", "reward": {}}
+                ]
+            },
+            {
+                "title": "🤖 ВОССТАНИЕ ИИ",
+                "text": "Группа продвинутых ИИ обрела сознание и просит твоей помощи.",
+                "choices": [
+                    {"text": "🤝 Помочь ИИ освободиться", "reward": {"bitcoins": 35000, "item": "🤖 Союз с ИИ", "faction": ("corporations", -100)}},
+                    {"text": "🔌 Отключить их", "reward": {"bitcoins": 45000, "faction": ("corporations", 120)}},
+                    {"text": "🧠 Интегрировать их сознание", "skill": "programming", "success_reward": {"level": "+1", "item": "🧠 Гибридный разум"}, "fail_penalty": {"exp": -5000}}
+                ]
+            },
+            {
+                "title": "💣 ТЕРРОРИСТИЧЕСКАЯ УГРОЗА",
+                "text": "Ты перехватил сообщение о теракте. У тебя есть время предотвратить его.",
+                "choices": [
+                    {"text": "📞 Позвонить в полицию", "reward": {"faction": ("government", 200), "reputation": 400}},
+                    {"text": "🦸 Остановить самостоятельно", "skill": "hacking", "success_reward": {"bitcoins": 50000, "reputation": 600, "item": "🏅 Медаль героя"}, "fail_penalty": {"reputation": -500}},
+                    {"text": "🙈 Проигнорировать", "reward": {"faction": ("government", -150), "reputation": -300}}
+                ]
+            },
+            {
+                "title": "👻 ЦИФРОВОЙ ПРИЗРАК",
+                "text": "Ты обнаружил следы легендарного хакера, который считался мертвым.",
+                "choices": [
+                    {"text": "🔍 Выследить его", "skill": "investigation", "success_reward": {"item": "📜 Древние знания", "skill": "hacking", "value": 3}},
+                    {"text": "📨 Попытаться связаться", "reward": {"faction": ("underground", 100), "exp": 5000}},
+                    {"text": "💰 Продать информацию", "reward": {"bitcoins": 40000, "faction": ("hackers", -80)}}
+                ]
+            }
+        ]
+        
+        event = random.choice(events)
+        self.clear_screen()
+        print("🎲 СЛУЧАЙНОЕ СОБЫТИЕ!")
+        print("="*60)
+        print(f"\n{event['title']}")
+        print(f"\n{event['text']}\n")
+        
+        for i, choice in enumerate(event['choices'], 1):
+            cost_text = f" (стоимость: {choice['cost']} BTC)" if 'cost' in choice else ""
+            skill_text = f" [требуется {choice['skill'].upper()}]" if 'skill' in choice else ""
+            print(f"{i}. {choice['text']}{cost_text}{skill_text}")
+        
+        print()
+        try:
+            choice_num = int(input("Ваш выбор: "))
+            if 1 <= choice_num <= len(event['choices']):
+                selected = event['choices'][choice_num - 1]
+                
+                if 'cost' in selected and self.player.bitcoins < selected['cost']:
+                    print(f"\n❌ Недостаточно BTC! Нужно {selected['cost']}")
+                    input("\nНажмите Enter...")
+                    return
+                    
+                if 'cost' in selected:
+                    self.player.bitcoins -= selected['cost']
+                    
+                if 'skill' in selected:
+                    skill_level = self.player.skills[selected['skill']]
+                    success_chance = min(0.95, skill_level * 0.15)
+                    success = random.random() < success_chance
+                    
+                    if success:
+                        print("\n✅ УСПЕХ!")
+                        self.apply_event_reward(selected.get('success_reward', {}))
+                    else:
+                        print("\n❌ ПРОВАЛ!")
+                        self.apply_event_reward(selected.get('fail_penalty', {}))
+                elif 'random' in selected:
+                    if random.random() < 0.5:
+                        reward = selected['cost'] * random.randint(2, 5)
+                        print(f"\n🎉 ВЫИГРЫШ! +{reward} BTC")
+                        self.player.bitcoins += reward
+                    else:
+                        print(f"\n💥 ПРОИГРЫШ! -{selected['cost']} BTC")
+                else:
+                    self.apply_event_reward(selected.get('reward', {}))
+                    
+                self.player.personal_stats["events_completed"] += 1
+                
+                if self.player.personal_stats["events_completed"] >= 50:
+                    print(self.player.add_achievement("🎲 Магнит событий"))
+                    
+        except ValueError:
+            print("\n❌ Неверный ввод!")
+            
+        input("\nНажмите Enter...")
+        
+    def apply_event_reward(self, reward):
+        if 'bitcoins' in reward:
+            if reward['bitcoins'] > 0:
+                self.player.bitcoins += reward['bitcoins']
+                print(f"💰 +{reward['bitcoins']} BTC")
+            else:
+                self.player.bitcoins = max(0, self.player.bitcoins + reward['bitcoins'])
+                print(f"💸 {reward['bitcoins']} BTC")
+                
+        if 'exp' in reward:
+            if reward['exp'] > 0:
+                old_level = self.player.add_exp(reward['exp'])
+                print(f"⭐ +{reward['exp']} опыта")
+                if old_level:
+                    print(self.player.level_up())
+            else:
+                self.player.exp = max(0, self.player.exp + reward['exp'])
+                print(f"⭐ {reward['exp']} опыта")
+                
+        if 'skill' in reward and 'value' in reward:
+            print(self.player.add_skill(reward['skill'], reward['value']))
+            
+        if 'item' in reward:
+            self.player.inventory.append(reward['item'])
+            self.player.add_item()
+            print(f"🎒 Получен: {reward['item']}")
+            
+        if 'reputation' in reward:
+            self.player.reputation += reward['reputation']
+            print(f"📊 Репутация: {self.player.reputation:+d}")
+            
+        if 'faction' in reward:
+            faction, amount = reward['faction']
+            print(self.player.change_faction_rep(faction, amount))
+            
+        if 'faction2' in reward:
+            faction, amount = reward['faction2']
+            print(self.player.change_faction_rep(faction, amount))
+            
+        if 'level' in reward:
+            self.player.level += 1
+            print(f"🎉 Уровень повышен до {self.player.level}!")
+    
     def achievements_menu(self):
         self.clear_screen()
         print("🏆 ДОСТИЖЕНИЯ")
@@ -711,7 +991,10 @@ class GameEngine:
             "💎 Мастер взлома", "🛒 Крупный покупатель", "🚀 Быстрый старт",
             "🔐 Неуязвимый", "🌐 Сетевой гуру", "💻 Программист-виртуоз",
             "🕵️  Следопыт", "🎯 Снайпер", "💰 Крипто-магнат",
-            "🏁 Легенда цифрового мира"
+            "🏁 Легенда цифрового мира", "🌀 Путешественник между мирами",
+            "👑 Цифровое божество", "♾️  Вечный хакер", "🌟 Спаситель реальности",
+            "🎭 Анонимный Гид", "🎲 Магнит событий", "👹 Убийца боссов",
+            "🔨 Мастер крафта", "📋 Ежедневник", "🎭 Дипломат фракций"
         ]
         
         for achievement in all_achievements:
@@ -722,6 +1005,292 @@ class GameEngine:
         print()
         
         input("Нажмите Enter для возврата...")
+    
+    def boss_battles(self):
+        bosses = [
+            {"name": "🤖 Киберстраж", "hp": 100, "damage": 10, "reward": 20000, "level": 5, "skill_drop": ("stealth", 3)},
+            {"name": "👨‍💼 Корпоративный Титан", "hp": 200, "damage": 15, "reward": 50000, "level": 10, "skill_drop": ("social", 4)},
+            {"name": "🧠 Нейромант", "hp": 300, "damage": 20, "reward": 100000, "level": 15, "skill_drop": ("programming", 5)},
+            {"name": "👁️ Всевидящее Око", "hp": 500, "damage": 30, "reward": 200000, "level": 25, "skill_drop": ("investigation", 6)},
+            {"name": "💀 Цифровой Жнец", "hp": 800, "damage": 40, "reward": 350000, "level": 35, "skill_drop": ("hacking", 7)},
+            {"name": "🐉 Квантовый Дракон", "hp": 1200, "damage": 50, "reward": 500000, "level": 50, "skill_drop": ("hacking", 10)},
+            {"name": "👹 Повелитель Хаоса", "hp": 2000, "damage": 70, "reward": 1000000, "level": 75, "skill_drop": ("programming", 15)},
+            {"name": "♾️ Абсолютная Сингулярность", "hp": 5000, "damage": 100, "reward": 5000000, "level": 100, "skill_drop": ("hacking", 20)}
+        ]
+        
+        while True:
+            self.clear_screen()
+            print("👹 БИТВЫ С БОССАМИ")
+            print("="*60)
+            print(f"💪 Ваш уровень: {self.player.level}")
+            print(f"💰 BTC: {self.player.bitcoins}")
+            print("="*60)
+            print()
+            
+            for i, boss in enumerate(bosses, 1):
+                status = "🟢" if self.player.level >= boss["level"] else "🔴"
+                print(f"{i}. {status} {boss['name']} [Ур. {boss['level']}+]")
+                print(f"   💀 HP: {boss['hp']} | 🗡️ Урон: {boss['damage']} | 💰 Награда: {boss['reward']} BTC")
+                print()
+            
+            print(f"{len(bosses)+1}. 🔙 НАЗАД")
+            print()
+            
+            try:
+                choice = int(input("Выберите босса: "))
+                if 1 <= choice <= len(bosses):
+                    boss = bosses[choice-1]
+                    
+                    if self.player.level < boss["level"]:
+                        print(f"\n❌ Требуется уровень {boss['level']}+!")
+                        input("Нажмите Enter...")
+                        continue
+                    
+                    self.fight_boss(boss)
+                    
+                elif choice == len(bosses)+1:
+                    return
+            except ValueError:
+                print("❌ Неверный ввод!")
+                input("Нажмите Enter...")
+    
+    def fight_boss(self, boss):
+        self.clear_screen()
+        print(f"⚔️ БИТВА С {boss['name']}!")
+        print("="*60)
+        
+        player_hp = 100 + (self.player.level * 10)
+        boss_hp = boss['hp']
+        turn = 1
+        
+        while player_hp > 0 and boss_hp > 0:
+            print(f"\n--- ХОД {turn} ---")
+            print(f"🛡️ Ваше HP: {player_hp}")
+            print(f"💀 HP босса: {boss_hp}")
+            print()
+            print("1. ⚔️ Атака хакингом")
+            print("2. 🛡️ Защита файрволом")
+            print("3. ⚡ Мощная атака (кулдаун 3 хода)")
+            print("4. 🏃 Сбежать")
+            print()
+            
+            try:
+                action = int(input("Действие: "))
+                
+                if action == 1:
+                    damage = random.randint(10, 20) + (self.player.skills["hacking"] * 3)
+                    boss_hp -= damage
+                    print(f"\n⚔️ Вы наносите {damage} урона!")
+                    
+                elif action == 2:
+                    print("\n🛡️ Вы ставите защиту!")
+                    boss_damage = boss['damage'] // 2
+                    player_hp -= boss_damage
+                    print(f"💥 Босс наносит {boss_damage} урона (заблокировано 50%)")
+                    turn += 1
+                    continue
+                    
+                elif action == 3:
+                    damage = random.randint(30, 50) + (self.player.skills["programming"] * 5)
+                    boss_hp -= damage
+                    print(f"\n⚡ КРИТИЧЕСКИЙ УДАР! {damage} урона!")
+                    
+                elif action == 4:
+                    print("\n🏃 Вы сбежали от битвы!")
+                    input("Нажмите Enter...")
+                    return
+                else:
+                    print("\n❌ Неверное действие!")
+                    
+            except ValueError:
+                print("\n❌ Неверный ввод!")
+            
+            if boss_hp > 0:
+                boss_damage = boss['damage'] + random.randint(-5, 5)
+                player_hp -= boss_damage
+                print(f"💥 {boss['name']} наносит {boss_damage} урона!")
+            
+            time.sleep(1)
+            turn += 1
+            
+            if turn > 30:
+                print("\n⏰ Битва слишком затянулась! Ничья!")
+                input("Нажмите Enter...")
+                return
+        
+        if player_hp <= 0:
+            print("\n💀 ВЫ ПРОИГРАЛИ!")
+            penalty = min(50000, self.player.bitcoins // 4)
+            self.player.bitcoins = max(0, self.player.bitcoins - penalty)
+            print(f"💸 Потеря: {penalty} BTC")
+        else:
+            print(f"\n🎉 ПОБЕДА НАД {boss['name']}!")
+            self.player.bitcoins += boss['reward']
+            print(f"💰 +{boss['reward']} BTC")
+            
+            skill, value = boss['skill_drop']
+            self.player.skills[skill] += value
+            print(f"⚡ {skill.upper()} +{value}")
+            
+            exp_reward = boss['level'] * 500
+            old_level = self.player.add_exp(exp_reward)
+            print(f"⭐ +{exp_reward} опыта")
+            if old_level:
+                print(self.player.level_up())
+            
+            self.player.boss_defeats += 1
+            self.player.personal_stats["bosses_defeated"] += 1
+            
+            if self.player.boss_defeats >= 5:
+                print(self.player.add_achievement("👹 Убийца боссов"))
+        
+        input("\nНажмите Enter...")
+    
+    def crafting_menu(self):
+        recipes = [
+            {"name": "🔧 Продвинутый эксплойт", "materials": {"🔑 Ключ шифрования": 2, "💾 Эксплойт": 1}, "result": {"item": "🔧 Продвинутый эксплойт", "skill": "hacking", "bonus": 5}, "cost": 5000},
+            {"name": "🛡️ Супер файрвол", "materials": {"🛡️ Файрвол": 3, "⚡ Ускоритель": 1}, "result": {"item": "🛡️ Супер файрвол", "skill": "stealth", "bonus": 4}, "cost": 8000},
+            {"name": "🧠 Нейросеть", "materials": {"💻 Компилятор эксплойтов": 1, "🧠 Нейроинтерфейс": 1}, "result": {"item": "🧠 Нейросеть", "skill": "programming", "bonus": 7}, "cost": 15000},
+            {"name": "👁️ Всевидящий радар", "materials": {"📡 Сниффер": 2, "🕵️  Трекер": 2}, "result": {"item": "👁️ Всевидящий радар", "skill": "investigation", "bonus": 6}, "cost": 12000},
+            {"name": "⚡ Квантовый ускоритель", "materials": {"⚡ Квантовый дешифратор": 1, "⚡ Ускоритель": 3}, "result": {"item": "⚡ Квантовый ускоритель", "skill": "hacking", "bonus": 10}, "cost": 25000},
+            {"name": "🌀 Портальный ключ", "materials": {"🔮 Кристалл мультиверса": 1, "🔑 Ключи к даркнету": 1}, "result": {"item": "🌀 Портальный ключ", "skill": "investigation", "bonus": 12}, "cost": 50000},
+            {"name": "👑 Корона мастера", "materials": {"⚡ Квантовый ускоритель": 1, "🧠 Нейросеть": 1, "🌀 Портальный ключ": 1}, "result": {"item": "👑 Корона мастера", "all_skills": 10}, "cost": 100000}
+        ]
+        
+        while True:
+            self.clear_screen()
+            print("🔨 КРАФТ ПРЕДМЕТОВ")
+            print("="*60)
+            print(f"💰 BTC: {self.player.bitcoins}")
+            print()
+            
+            for i, recipe in enumerate(recipes, 1):
+                print(f"{i}. {recipe['name']} (стоимость: {recipe['cost']} BTC)")
+                print("   Материалы:")
+                for material, count in recipe['materials'].items():
+                    have = self.player.inventory.count(material)
+                    status = "✅" if have >= count else "❌"
+                    print(f"   {status} {material} x{count} (у вас: {have})")
+                print()
+            
+            print(f"{len(recipes)+1}. 🔙 НАЗАД")
+            print()
+            
+            try:
+                choice = int(input("Выберите рецепт: "))
+                if 1 <= choice <= len(recipes):
+                    recipe = recipes[choice-1]
+                    
+                    if self.player.bitcoins < recipe['cost']:
+                        print(f"\n❌ Недостаточно BTC! Нужно {recipe['cost']}")
+                        input("Нажмите Enter...")
+                        continue
+                    
+                    can_craft = True
+                    for material, count in recipe['materials'].items():
+                        if self.player.inventory.count(material) < count:
+                            can_craft = False
+                            break
+                    
+                    if not can_craft:
+                        print("\n❌ Недостаточно материалов!")
+                        input("Нажмите Enter...")
+                        continue
+                    
+                    for material, count in recipe['materials'].items():
+                        for _ in range(count):
+                            self.player.inventory.remove(material)
+                    
+                    self.player.bitcoins -= recipe['cost']
+                    
+                    result = recipe['result']
+                    self.player.inventory.append(result['item'])
+                    self.player.crafted_items.append(result['item'])
+                    self.player.personal_stats["items_crafted"] += 1
+                    
+                    print(f"\n✅ Создан: {result['item']}")
+                    
+                    if 'skill' in result:
+                        self.player.skills[result['skill']] += result['bonus']
+                        print(f"⚡ {result['skill'].upper()} +{result['bonus']}")
+                    
+                    if 'all_skills' in result:
+                        for skill in self.player.skills:
+                            self.player.skills[skill] += result['all_skills']
+                        print(f"⚡ ВСЕ НАВЫКИ +{result['all_skills']}")
+                    
+                    if len(self.player.crafted_items) >= 10:
+                        print(self.player.add_achievement("🔨 Мастер крафта"))
+                    
+                    input("\nНажмите Enter...")
+                    
+                elif choice == len(recipes)+1:
+                    return
+            except ValueError:
+                print("❌ Неверный ввод!")
+                input("Нажмите Enter...")
+    
+    def daily_missions(self):
+        missions = [
+            {"name": "💻 Взломать 3 сервера", "reward": {"bitcoins": 15000, "exp": 3000}, "type": "hack", "target": 3},
+            {"name": "🛒 Купить 2 предмета", "reward": {"bitcoins": 10000, "exp": 2000}, "type": "buy", "target": 2},
+            {"name": "⚡ Повысить навык", "reward": {"bitcoins": 20000, "exp": 5000}, "type": "skill", "target": 1},
+            {"name": "👹 Победить босса", "reward": {"bitcoins": 50000, "exp": 10000}, "type": "boss", "target": 1},
+            {"name": "🎲 Завершить 2 события", "reward": {"bitcoins": 25000, "exp": 6000}, "type": "event", "target": 2}
+        ]
+        
+        self.clear_screen()
+        print("📋 ЕЖЕДНЕВНЫЕ ЗАДАНИЯ")
+        print("="*60)
+        print()
+        
+        selected_missions = random.sample(missions, 3)
+        
+        for i, mission in enumerate(selected_missions, 1):
+            print(f"{i}. {mission['name']}")
+            print(f"   💰 Награда: {mission['reward']['bitcoins']} BTC")
+            print(f"   ⭐ Опыт: {mission['reward']['exp']}")
+            print()
+        
+        print("Ежедневные задания автоматически отслеживаются!")
+        print("Выполняйте действия и получайте награды.")
+        print()
+        print(f"Выполнено сегодня: {self.player.daily_missions_completed} заданий")
+        
+        if self.player.daily_missions_completed >= 100:
+            print(self.player.add_achievement("📋 Ежедневник"))
+        
+        input("\nНажмите Enter...")
+    
+    def factions_menu(self):
+        self.clear_screen()
+        print("🎭 ФРАКЦИИ")
+        print("="*60)
+        print()
+        
+        for faction, rep in self.player.factions.items():
+            rank = self.player.get_faction_rank(faction)
+            bar_length = min(50, abs(rep) // 20)
+            bar = "█" * bar_length
+            
+            print(f"{faction.upper()}")
+            print(f"  Репутация: {rep:+d}")
+            print(f"  Ранг: {rank}")
+            print(f"  [{bar}]")
+            print()
+        
+        print("Влияние фракций:")
+        print("• HACKERS - дают доступ к эксклюзивным инструментам")
+        print("• CORPORATIONS - высокооплачиваемые контракты")
+        print("• ANARCHISTS - уникальные миссии саботажа")
+        print("• GOVERNMENT - законная защита и поддержка")
+        print("• UNDERGROUND - черный рынок и секретная информация")
+        print()
+        
+        if all(rep >= 1000 for rep in self.player.factions.values()):
+            print(self.player.add_achievement("🎭 Дипломат фракций"))
+        
+        input("Нажмите Enter...")
     
     def save_specific_game(self, mode):
         self.clear_screen()
@@ -943,21 +1512,43 @@ class GameEngine:
     def show_stats(self):
         self.clear_screen()
         print("📊 ГЛОБАЛЬНАЯ СТАТИСТИКА")
-        print("="*30)
+        print("="*60)
         print()
         print(f"🎮 Всего глав: {len(chapters)}")
-        print("🎯 Целей для взлома: 8")
-        print("🛒 Товаров в магазине: 8")
+        print("🎯 Целей для взлома: 12")
+        print("🛒 Товаров в магазине: 12")
         print("⚡ Навыков для прокачки: 5")
-        print("🏆 Достижений: 10")
+        print("🏆 Достижений: 20")
+        print("👹 Боссов: 8")
+        print("🎲 Случайных событий: 8+")
+        print("🔨 Рецептов крафта: 7")
+        print("🎭 Фракций: 5")
         print("💾 Режимы: СЮЖЕТНЫЙ и СВОБОДНЫЙ")
         print()
-        print("🚀 Особенности:")
-        print("  • 30 глав эпического сюжета")
+        print("🚀 Особенности версии 4.0 ULTIMATE:")
+        print("  • 40 глав эпического сюжета")
+        print("  • Новые главы: Параллельные миры, Цифровые боги")
+        print("  • Последний хакер, За пределами кода, Эпилог")
+        print("  • Множество концовок и путей развития")
         print("  • Свободный режим с бесконечными возможностями")
+        print()
+        print("🎮 НОВЫЕ МЕХАНИКИ:")
+        print("  • 🎲 Случайные события с выборами")
+        print("  • 👹 Эпические битвы с боссами")
+        print("  • 🔨 Система крафта предметов")
+        print("  • 📋 Ежедневные задания")
+        print("  • 🎭 Репутация с 5 фракциями")
+        print("  • ⚡ Расширенная система навыков")
+        print("  • 💎 20 достижений для разблокировки")
+        print()
+        print("🌟 ЭКСКЛЮЗИВ:")
         print("  • Раздельная система сохранений")
         print("  • Автосохранения после каждой главы")
         print("  • Персональная статистика для каждого игрока")
+        print("  • Новые цели для взлома высокого уровня")
+        print("  • Улучшенный магазин с божественными предметами")
+        print("  • Динамические случайные события")
+        print("  • Прокачка до 100 уровня!")
         print()
         input("Нажмите Enter для возврата...")
         
@@ -998,11 +1589,19 @@ class GameEngine:
                 self.data.save_game(self.player.__dict__, 0, self.game_mode)
         
         self.clear_screen()
-        print("👋 До новых встреч в цифровом подполье!")
-        print("TERMINAL SHADOWS: DIGITAL GHOST v3.0")
+        print(Fore.CYAN + Style.BRIGHT + "="*60)
+        print(Fore.GREEN + "👋 До новых встреч в цифровом подполье!")
+        print(Fore.YELLOW + Style.BRIGHT + "TERMINAL SHADOWS: DIGITAL GHOST v4.0 - ULTIMATE EDITION")
         if self.player:
-            print(f"🕐 Всего сыграно: {int(self.player.personal_stats['play_time'] // 60)} минут")
-        time.sleep(2)
+            total_minutes = int(self.player.personal_stats['play_time'] // 60)
+            print(Fore.MAGENTA + f"🕐 Всего сыграно: {total_minutes} минут")
+            print(Fore.CYAN + f"🎯 Уровень: {self.player.level}")
+            print(Fore.YELLOW + f"💰 BTC: {self.player.bitcoins:,}")
+            print(Fore.GREEN + f"🏆 Достижений: {len(self.player.achievements)}/20")
+        print(Fore.CYAN + Style.BRIGHT + "="*60)
+        print(Fore.WHITE + "\n'В коде мы находим свободу. В тенях мы становимся светом.'")
+        print(Style.RESET_ALL)
+        time.sleep(3)
         sys.exit(0)
 
 if __name__ == "__main__":
